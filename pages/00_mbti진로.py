@@ -1,6 +1,6 @@
 # MBTI 진로 추천 Streamlit 코드
 
-```python
+
 import streamlit as st
 
 st.set_page_config(page_title="MBTI 진로 추천", page_icon="✨")
@@ -268,17 +268,5 @@ if st.button("✨ 진로 추천 보기 ✨"):
         st.write(f"💰 평균 연봉 : {career['salary']}")
 
     st.success("✨ 미래의 멋진 모습을 응원할게! ✨")
-```
 
-## 실행 방법
-
-1. 파일 이름을 `app.py` 로 저장하기
-2. Streamlit Cloud에 업로드하기
-3. 실행 완료 😎
-
-## 필요한 패키지
-
-* streamlit
-
-※ Streamlit Cloud에서는 기본적으로 Streamlit을 사용 가능해서 별도의 추가 라이브러리 설치 없이 실행 가능해!
 
