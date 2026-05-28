@@ -63,7 +63,7 @@ with tab1:
     values = country_data[mbti_types]
 
     # -----------------------------------
-    # 🔥 높은 비율 순으로 정렬
+    # 높은 순으로 정렬
     # -----------------------------------
     sorted_values = values.sort_values(
         ascending=False
@@ -74,35 +74,40 @@ with tab1:
 
     # -----------------------------------
     # 색상 설정
-    # 1등 = 핫핑크
-    # 나머지 = 초록 그라데이션
+    # 1위 = 핫핑크
+    # 나머지 = 높은 순서대로
+    # 진한 초록 → 연한 초록
     # -----------------------------------
-    green_shades = [
-        "#d8f3dc",
-        "#b7e4c7",
-        "#95d5b2",
-        "#74c69d",
-        "#52b788",
-        "#40916c",
+    green_gradient = [
+        "#081c15",  # 가장 진한 초록
+        "#1b4332",
         "#2d6a4f",
-        "#1b4332"
+        "#40916c",
+        "#52b788",
+        "#74c69d",
+        "#95d5b2",
+        "#b7e4c7",
+        "#d8f3dc",
+        "#edfdf1",
+        "#f4fff6",
+        "#f8fff9",
+        "#fbfffc",
+        "#fdfffe",
+        "#ffffff"
     ]
 
     colors = []
 
-    green_idx = 0
-
     for i in range(len(sorted_scores)):
 
         if i == 0:
-            colors.append("#ff1493")  # 핫핑크
+            # 가장 높은 값
+            colors.append("#ff1493")
+
         else:
             colors.append(
-                green_shades[
-                    green_idx % len(green_shades)
-                ]
+                green_gradient[i - 1]
             )
-            green_idx += 1
 
     # -----------------------------------
     # 그래프 생성
@@ -188,25 +193,25 @@ with tab2:
 
     # -----------------------------------
     # 색상 설정
+    # 1위 = 핫핑크
+    # 나머지 = 진한 초록 → 연한 초록
     # -----------------------------------
-    green_gradient = [
-        "#d8f3dc",
-        "#b7e4c7",
-        "#95d5b2",
-        "#74c69d",
-        "#52b788",
-        "#40916c",
-        "#2d6a4f",
+    green_gradient2 = [
+        "#081c15",
         "#1b4332",
-        "#081c15"
+        "#2d6a4f",
+        "#40916c",
+        "#52b788",
+        "#74c69d",
+        "#95d5b2",
+        "#b7e4c7",
+        "#d8f3dc"
     ]
 
     colors2 = ["#ff1493"]
 
-    for i in range(9):
-        colors2.append(
-            green_gradient[i]
-        )
+    for color in green_gradient2:
+        colors2.append(color)
 
     # -----------------------------------
     # 그래프 생성
