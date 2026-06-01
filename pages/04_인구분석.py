@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 # 페이지 설정
 st.set_page_config(
-    page_title="서울시 자치구별 인구 분석",
+    page_title="서울시 자치구별 연령대 인구 분석",
     page_icon="📊",
     layout="wide"
 )
@@ -24,7 +24,7 @@ for enc in encodings:
         st.success(f"파일 로드 성공 (인코딩: {enc})")
         break
     except:
-        pass
+        continue
 
 if df is None:
     st.error("CSV 파일을 읽을 수 없습니다.")
@@ -33,43 +33,74 @@ if df is None:
 # -----------------------------
 # 데이터 확인
 # -----------------------------
-st.subheader("📋 원본 데이터")
-st.dataframe(df)
+with st.expander("데이터 확인"):
+    st.write("컬럼명")
+    st.write(df.columns.tolist())
+    st.dataframe(df.head())
 
-# 첫 번째 컬럼 = 행정구
+# -----------------------------
+# 첫 번째 컬럼을 행정구로 사용
+# -----------------------------
 district_col = df.columns[0]
 
-# 두 번째 컬럼이 총인구수라고 가정
-# 세 번째 컬럼부터 연령대 데이터
-age_columns = df.columns[2:]
+# 숫자형 컬럼만 추출
+numeric_cols = []
+
+for col in df.columns:
+    temp = pd.to_numeric(
+        df[col].astype(str).str.replace(",", ""),
+        errors="coerce"
+    )
+
+    if temp.notna().sum() > 0:
+        numeric_cols.append(col)
+
+# 총인구수 제외
+if len(numeric_cols) > 1:
+    age_columns = numeric_cols[1:]
+else:
+    age_columns = numeric_cols
 
 # -----------------------------
 # 행정구 선택
 # -----------------------------
 district = st.selectbox(
-    "🏙️ 행정구를 선택하세요",
-    df[district_col]
+    "🏙️ 행정구 선택",
+    df[district_col].astype(str).unique()
 )
 
-selected_row = df[df[district_col] == district].iloc[0]
+selected_row = df[df[district_col].astype(str) == district].iloc[0]
 
-# 연령대 인구수
-ages = age_columns
-population = [selected_row[col] for col in age_columns]
+# -----------------------------
+# 연령대 데이터 추출
+# -----------------------------
+ages = []
+population = []
 
-# 숫자형 변환
-population = pd.to_numeric(population, errors="coerce")
+for col in age_columns:
+    value = str(selected_row[col]).replace(",", "")
+
+    try:
+        value = float(value)
+
+        ages.append(col)
+        population.append(value)
+
+    except:
+        pass
+
+if len(population) == 0:
+    st.error("연령대 데이터를 찾을 수 없습니다.")
+    st.stop()
 
 # -----------------------------
 # 그래프
 # -----------------------------
 fig, ax = plt.subplots(figsize=(12, 6))
 
-# 배경색
-fig.patch.set_facecolor("#f0f0f0")
-ax.set_facecolor("#f0f0f0")
+fig.patch.set_facecolor("#f2f2f2")
+ax.set_facecolor("#f2f2f2")
 
-# 꺾은선 그래프
 ax.plot(
     ages,
     population,
@@ -101,13 +132,20 @@ st.pyplot(fig)
 # -----------------------------
 # 통계
 # -----------------------------
-st.subheader("📈 요약 통계")
+max_idx = population.index(max(population))
 
-max_age = ages[population.argmax()]
-max_pop = int(population.max())
+st.subheader("📈 분석 결과")
 
-st.metric(
-    "가장 많은 연령대",
-    max_age,
-    f"{max_pop:,}명"
-)
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(
+        "가장 많은 연령대",
+        ages[max_idx]
+    )
+
+with col2:
+    st.metric(
+        "인구수",
+        f"{int(max(population)):,}명"
+    )
