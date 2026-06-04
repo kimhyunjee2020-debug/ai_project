@@ -1,38 +1,19 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
+import plotly.graph_objects as go
 
-# ------------------
+# -----------------------
 # 페이지 설정
-# ------------------
+# -----------------------
 st.set_page_config(
     page_title="서울 기온 분석",
     page_icon="🌡️",
     layout="wide"
 )
 
-# ------------------
-# 한글 폰트 설정
-# ------------------
-plt.rcParams["axes.unicode_minus"] = False
-
-font_candidates = [
-    "NanumGothic",
-    "Malgun Gothic",
-    "AppleGothic"
-]
-
-for font in font_candidates:
-    try:
-        plt.rcParams["font.family"] = font
-        break
-    except:
-        pass
-
-# ------------------
-# 데이터 로드
-# ------------------
+# -----------------------
+# 데이터 불러오기
+# -----------------------
 @st.cache_data
 def load_data():
 
@@ -43,13 +24,16 @@ def load_data():
 
     df.columns = df.columns.str.strip()
 
+    # 날짜 변환
     df["날짜"] = pd.to_datetime(
         df["날짜"],
-        errors="coerce"
+        errors="coerce",
+        infer_datetime_format=True
     )
 
     df = df.dropna(subset=["날짜"])
 
+    # 숫자형 변환
     df["최고기온(℃)"] = pd.to_numeric(
         df["최고기온(℃)"],
         errors="coerce"
@@ -60,39 +44,54 @@ def load_data():
         errors="coerce"
     )
 
+    df = df.dropna(
+        subset=["최고기온(℃)", "최저기온(℃)"]
+    )
+
     df["연도"] = df["날짜"].dt.year
     df["월"] = df["날짜"].dt.month
     df["일"] = df["날짜"].dt.day
 
     return df
 
+
 df = load_data()
 
+# -----------------------
+# 제목
+# -----------------------
 st.title("🌡️ 서울 기온 분석")
 
-# ------------------
+st.markdown(
+    """
+    월과 일을 선택하면
+    해당 날짜의 연도별 최고기온과 최저기온을 확인할 수 있습니다.
+    """
+)
+
+# -----------------------
 # 월 선택
-# ------------------
+# -----------------------
 month = st.selectbox(
-    "월 선택",
+    "📅 월 선택",
     sorted(df["월"].unique())
 )
 
-# ------------------
+# -----------------------
 # 일 선택
-# ------------------
+# -----------------------
 available_days = sorted(
     df[df["월"] == month]["일"].unique()
 )
 
 day = st.selectbox(
-    "일 선택",
+    "📅 일 선택",
     available_days
 )
 
-# ------------------
-# 선택 날짜 데이터
-# ------------------
+# -----------------------
+# 데이터 필터링
+# -----------------------
 selected_df = df[
     (df["월"] == month) &
     (df["일"] == day)
@@ -100,49 +99,56 @@ selected_df = df[
 
 selected_df = selected_df.sort_values("연도")
 
-st.subheader(
-    f"📈 {month}월 {day}일의 연도별 기온 변화"
-)
-
-# ------------------
+# -----------------------
 # 그래프
-# ------------------
-fig, ax = plt.subplots(figsize=(14, 6))
+# -----------------------
+fig = go.Figure()
 
-ax.plot(
-    selected_df["연도"],
-    selected_df["최고기온(℃)"],
-    color="red",
-    linewidth=2,
-    label="최고기온"
+# 최고기온
+fig.add_trace(
+    go.Scatter(
+        x=selected_df["연도"],
+        y=selected_df["최고기온(℃)"],
+        mode="lines",
+        name="최고기온",
+        line=dict(
+            color="red",
+            width=3
+        )
+    )
 )
 
-ax.plot(
-    selected_df["연도"],
-    selected_df["최저기온(℃)"],
-    color="blue",
-    linewidth=2,
-    label="최저기온"
+# 최저기온
+fig.add_trace(
+    go.Scatter(
+        x=selected_df["연도"],
+        y=selected_df["최저기온(℃)"],
+        mode="lines",
+        name="최저기온",
+        line=dict(
+            color="blue",
+            width=3
+        )
+    )
 )
 
-ax.set_title(
-    f"{month}월 {day}일 서울 기온 변화"
+fig.update_layout(
+    title=f"{month}월 {day}일 서울 기온 변화",
+    xaxis_title="연도",
+    yaxis_title="기온(℃)",
+    hovermode="x unified",
+    legend_title="범례",
+    height=600
 )
 
-ax.set_xlabel("연도")
-ax.set_ylabel("기온(℃)")
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
 
-ax.legend()
-
-ax.grid(True, alpha=0.3)
-
-plt.tight_layout()
-
-st.pyplot(fig)
-
-# ------------------
+# -----------------------
 # 통계
-# ------------------
+# -----------------------
 col1, col2 = st.columns(2)
 
 with col1:
@@ -157,10 +163,10 @@ with col2:
         f"{selected_df['최저기온(℃)'].min():.1f}℃"
     )
 
-# ------------------
+# -----------------------
 # 데이터 보기
-# ------------------
-with st.expander("데이터 보기"):
+# -----------------------
+with st.expander("📋 데이터 보기"):
     st.dataframe(
         selected_df,
         use_container_width=True
