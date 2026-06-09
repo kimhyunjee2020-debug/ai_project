@@ -1,114 +1,169 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib import font_manager, rc
 
-# --------------------
-# 한글 설정
-# --------------------
-plt.rcParams['font.family'] = 'Malgun Gothic'
-plt.rcParams['axes.unicode_minus'] = False
-
-# --------------------
+# -----------------------
 # 페이지 설정
-# --------------------
+# -----------------------
 st.set_page_config(
     page_title="연령별 사망원인 분석",
     page_icon="📊",
     layout="wide"
 )
 
+# -----------------------
+# 한글 설정
+# -----------------------
+plt.rcParams["font.family"] = "Malgun Gothic"
+plt.rcParams["axes.unicode_minus"] = False
+
 st.title("📊 2024 연령별 사망원인 분석")
 st.markdown("---")
 
-# --------------------
-# 데이터 불러오기
-# --------------------
-df = pd.read_csv("fffff.csv", encoding="utf-8")
+# -----------------------
+# CSV 읽기
+# -----------------------
+@st.cache_data
+def load_data():
+    encodings = ["cp949", "euc-kr", "utf-8"]
 
-# 컬럼명 공백 제거
-df.columns = df.columns.str.strip()
+    for enc in encodings:
+        try:
+            df = pd.read_csv(
+                "fffff.csv",
+                encoding=enc,
+                sep=None,
+                engine="python"
+            )
+            return df
+        except:
+            pass
 
+    st.error("CSV 파일을 읽을 수 없습니다.")
+    st.stop()
+
+df = load_data()
+
+# -----------------------
+# 컬럼 확인
+# -----------------------
+st.write("데이터 미리보기")
+st.dataframe(df.head())
+
+st.write("컬럼명")
+st.write(list(df.columns))
+
+# -----------------------
+# 컬럼 자동 찾기
+# -----------------------
+age_col = None
+cause_col = None
+death_col = None
+
+for col in df.columns:
+    c = str(col)
+
+    if "연령" in c:
+        age_col = col
+
+    if "사망원인" in c:
+        cause_col = col
+
+    if "사망자" in c or "사망수" in c:
+        death_col = col
+
+# 컬럼 못 찾으면 종료
+if age_col is None or cause_col is None or death_col is None:
+    st.error("연령 / 사망원인 / 사망자수 컬럼을 찾지 못했습니다.")
+    st.stop()
+
+# -----------------------
 # 숫자형 변환
-df["사망자수"] = (
-    df["사망자수"]
+# -----------------------
+df[death_col] = (
+    df[death_col]
     .astype(str)
-    .str.replace(",", "")
+    .str.replace(",", "", regex=False)
 )
 
-df["사망자수"] = pd.to_numeric(df["사망자수"], errors="coerce")
+df[death_col] = pd.to_numeric(
+    df[death_col],
+    errors="coerce"
+)
 
-# 결측 제거
-df = df.dropna(subset=["사망자수"])
+df = df.dropna(subset=[death_col])
 
-# --------------------
+# -----------------------
 # 연령대 선택
-# --------------------
-age_list = sorted(df["연령"].dropna().unique())
+# -----------------------
+age_list = sorted(df[age_col].dropna().unique())
 
 selected_age = st.selectbox(
     "연령대를 선택하세요",
     age_list
 )
 
-# --------------------
-# 선택된 연령 데이터
-# --------------------
-age_df = df[df["연령"] == selected_age].copy()
+# -----------------------
+# 선택 데이터
+# -----------------------
+filtered = df[df[age_col] == selected_age].copy()
 
-# 높은 순 정렬
-age_df = age_df.sort_values(
-    by="사망자수",
+filtered = filtered.sort_values(
+    death_col,
     ascending=False
 )
 
-# --------------------
+# -----------------------
 # 표 출력
-# --------------------
+# -----------------------
 st.subheader(f"📋 {selected_age} 사망원인 순위")
 
 st.dataframe(
-    age_df[["사망원인", "사망자수"]],
+    filtered[[cause_col, death_col]],
     use_container_width=True
 )
 
-# --------------------
+# -----------------------
 # 그래프
-# --------------------
+# -----------------------
 st.subheader("📈 사망원인별 사망자 수")
 
-fig, ax = plt.subplots(figsize=(14, 6))
+fig, ax = plt.subplots(figsize=(15, 7))
 
-# 배경 연한 회색
+# 배경색
 fig.patch.set_facecolor("#f2f2f2")
 ax.set_facecolor("#f2f2f2")
 
 # 검정색 꺾은선
 ax.plot(
-    age_df["사망원인"],
-    age_df["사망자수"],
+    filtered[cause_col],
+    filtered[death_col],
     color="black",
-    linewidth=2,
-    marker="o"
+    marker="o",
+    linewidth=2
+)
+
+ax.set_title(
+    f"{selected_age} 사망원인 분석",
+    fontsize=16
 )
 
 ax.set_xlabel("사망원인")
 ax.set_ylabel("사망자 수")
-ax.set_title(f"{selected_age} 사망원인 분석")
 
 plt.xticks(rotation=75)
 plt.tight_layout()
 
 st.pyplot(fig)
 
-# --------------------
+# -----------------------
 # TOP5
-# --------------------
+# -----------------------
 st.subheader("🏆 TOP 5 사망원인")
 
-top5 = age_df.head(5)
+top5 = filtered.head(5)
 
 for i, row in enumerate(top5.itertuples(), start=1):
     st.write(
-        f"{i}위 : {row.사망원인} ({int(row.사망자수):,}명)"
+        f"{i}위 | {getattr(row, cause_col)} | {int(getattr(row, death_col)):,}명"
     )
