@@ -11,30 +11,24 @@ def set_korean_font():
     os_name = platform.system()
     
     if os_name == "Windows":
-        # 윈도우 기본 맑은 고딕
         plt.rcParams["font.family"] = "Malgun Gothic"
     elif os_name == "Darwin":
-        # 맥OS 기본 애플 고딕
         plt.rcParams["font.family"] = "AppleGothic"
     else:
-        # Streamlit Cloud (Linux) 및 기타 환경
-        # 리눅스 서버에 기본 탑재된 나눔 또는 고딕 계열 폰트 자동 검색
+        # Streamlit Cloud (Linux) 환경 대응
         available_fonts = [f.name for f in fm.fontManager.ttflist]
-        
-        # 서버에 설치된 한글 지원 가능 폰트 후보들
         ko_font_candidates = [
             "NanumGothic", "NanumMyeongjo", "Noto Sans CJK KR", 
             "Liberation Sans", "DejaVu Sans", "sans-serif"
         ]
-        
         for font in ko_font_candidates:
             if font in available_fonts:
                 plt.rcParams["font.family"] = font
                 break
                 
-    plt.rcParams["axes.unicode_minus"] = False  # 마이너스 부호 깨짐 방지
+    plt.rcParams["axes.unicode_minus"] = False
 
-# 한글 설정 함수 실행
+# 한글 설정 적용
 set_korean_font()
 
 # ----------------------
@@ -62,7 +56,7 @@ df.columns = [
     "사망률"
 ]
 
-# 사망자수 숫자형 변환 및 결측치 제거
+# 숫자형 변환 및 결측치 제거
 df["사망자수"] = pd.to_numeric(df["사망자수"], errors="coerce")
 df = df.dropna(subset=["사망자수"])
 
@@ -72,7 +66,7 @@ df = df.dropna(subset=["사망자수"])
 ages = sorted(df["연령대별"].unique())
 selected_age = st.selectbox("연령대를 선택하세요", ages)
 
-# 선택된 연령대 데이터 필터링 후 사망원인별 합산 및 정렬
+# 데이터 필터링 및 합산/정렬
 filtered = df[df["연령대별"] == selected_age].copy()
 filtered = filtered.groupby("사망원인", as_index=False)["사망자수"].sum()
 filtered = filtered.sort_values("사망자수", ascending=False)
@@ -93,7 +87,6 @@ with col1:
 with col2:
     st.subheader("📈 시각화 차트")
     
-    # 그래프 생성 및 배경색 설정
     fig, ax = plt.subplots(figsize=(10, 6))
     fig.patch.set_facecolor("white")
     ax.set_facecolor("#f8f9fa")
@@ -102,16 +95,33 @@ with col2:
     bars = ax.bar(
         filtered["사망원인"],
         filtered["사망자수"],
-        color="#4A90E2",  # 깔끔한 블루 톤
+        color="#4A90E2",
         edgecolor="none",
         width=0.6
     )
     
-    # 막대 위에 숫자 표시 (데이터 라벨링)
+    # 막대 위에 숫자 표시
     for bar in bars:
         height = bar.get_height()
         ax.annotate(
-            f'{int(height):,}',
+            f"{int(height):,}",
             xy=(bar.get_x() + bar.get_width() / 2, height),
-            xytext=(0, 3),  # 위로 3포인트 띄움
-            text
+            xytext=(0, 3),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=9
+        )
+    
+    # 축 및 제목 설정
+    ax.set_title(f"[{selected_age}] 주요 사망원인 순위", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("사망원인", fontsize=11, labelpad=10)
+    ax.set_ylabel("사망자 수 (명)", fontsize=11, labelpad=10)
+    
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    
+    st.pyplot(fig)
